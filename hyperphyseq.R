@@ -1,5 +1,6 @@
 library(R6)
 library(sqldf)
+library(phyloseq)
 
 .libPaths(new=c('/home/balter/conda/lib/R/library', '/home/balter/R'))
 
@@ -14,7 +15,7 @@ HyperPhyseq = R6Class("HyperPhyseq",
     {
       self$sequence_abundance_table = ps@otu_table
       self$sequence_taxa_table = ps@taxonomy_table
-      self$sample_metadata = ps@sam_data
+      self$sstudy_metadata = ps@sam_data
       
       asv_tab = self$sequence_abundance_table
       tax_tab = self$tsequence_taxa_table
@@ -26,6 +27,17 @@ on asv_tab.row_names == tax_tab.row_names
 "
       self.tax_abundance_table = sqldf(row.names=T, SQL)
       
+      rm(c(asv_tab, tax_tab))
+      
+    },
+    
+    createPhyloseqFromTables = function()
+    {
+      private$ps_internal = ps(
+        otu_table(self$sequence_abundance_table),
+        tax_table(self$sequence_taxa_table),
+        sample_data(self$study_metadata)
+      )
     }
     
     
@@ -131,11 +143,7 @@ where
   
   
 )
-               
-
-
-
-
+              
 
     getAlphaDiversities = function(
       ps,
@@ -148,61 +156,3 @@ where
     {
 
     }
-
-    filter = function(
-      ps,
-      taxa_list = c(), # named list in format e.g. c(Phylum=c("P1", "P2"), Genus=c("G1", "G2"))
-      methods=c(), # prevalence_percent, abundance, relative_abundance, sample_IDs
-      sampleIDs=c(),
-      variables=c(),
-      min_prev=0,
-      max_prev=Inf,
-      avg_prev=0,
-      min_rel_prev=0,
-      max_rel_prev=Inf,
-      avg_rel_prev=0,
-      min_abund=0,
-      max_abund=Inf,
-      avg_abund=0,
-      min_rel_abund=0,
-      max_rel_abund=Inf,
-      avg_rel_abund=0
-    )
-    {
-      requested_fliters = c()
-
-      If (length(taxa_list) > 0)
-      {
-        requested_filters = c(requested_filters, "taxa_list")
-        #create function call...
-      }
-
-      if (length(methods) > 0)
-      {
-        requested_filters = c(requested_filters, "taxa_list")
-        #create function call...
-      }
-
-      if (length(sampleIDs) > 0)
-      {
-        requested_filters = c(requested_filters, "taxa_list")
-        #create function call...
-      }
-
-      if (length(variables) > 0)
-      {
-        requested_filters = c(requested_filters, "taxa_list")
-        #create function call...
-      }
-
-
-    }
-
-#     
-#     
-#   ),
-#   
-#   Private = list(
-#     
-#   )
-# )

@@ -10,8 +10,8 @@ study_metadata = read.table('map_091917.tsv', header=T, sep='\t')
 age_rounded_numeric = sapply(study_metadata['Age_Rounded'], as.numeric)
 study_metadata['Age_Rounded'] = as.factor(age_rounded_numeric)
 
-CaseString = ifelse(study_metadata['Case']==0, "AMD", "Control")
-study_metadata['CaseString'] = CaseString
+CaseString = list(ifelse(study_metadata['Case']==0, "AMD", "Control"))
+study_metadata['CaseString'] = as.list(CaseString)
 sample_names = levels(study_metadata[,'SampleID'])
 
 
