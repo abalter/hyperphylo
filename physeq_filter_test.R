@@ -7,16 +7,17 @@ load('test_phyo.RData')
 
 print("creating psfilteSr1")
 
-psfilter1 = PhyseqFilter$new(
+filter1 = PhyseqFilter$new(
   phyloseq_object=ps
 )$
   filter(
     taxa_query="Phylum in ('Bacteroidetes','Fermicutes') and Genus in ('Prevotella_9','Bacteroides','Sellimonas','Anaerostipes','Barnesiella')",
     variable_value_query="CaseString = 'AMD'"
-  )$
-  getPS()
+  )
+  
+filter1_ps = filter1$getPS()
 
-print(psfilter1)
+filter1_tab = filter1$getTaxaAbundanceTable()
 
-
+print(dim(filter1_tab))
 

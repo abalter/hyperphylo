@@ -34,7 +34,7 @@ PhyseqFilter = R6Class("PhyseqFilter",
       self$ASV_taxa_table = taxa_table
       self$study_metadata = study_metadata
 
-      self$tax_abundance_table = sqldf(row.names=T, "
+      self$taxa_abundance_table = sqldf(row.names=T, "
 select * 
 from asv_table inner join taxa_table 
 on asv_table.row_names == taxa_table.row_names
@@ -76,6 +76,8 @@ on asv_table.row_names == taxa_table.row_names
   ),
 
   public = list(
+    taxa_abundance_table=NULL,
+    
     initialize = function(
       phyloseq_object=NULL,
       sequence_taxa_table=NULL, # Rows are sequences. Cols are taxa ranks. Values are taxa names.
@@ -176,37 +178,38 @@ on asv_table.row_names == taxa_table.row_names
       
       ASV_abundance_table = data.frame(self$ASV_abundance_table)
       ASV_tax_table = data.frame(self$ASV_tax_table)
-      tax_abundance_table = data.frame(self$tax_abundance_table)
+      taxa_abundance_table = data.frame(self$taxa_abundance_table)
       
-      filtered_tax_abundance_table_query = "
+      filtered_taxa_abundance_table_query = "
 select
   %s,
   Kingdom, Phylum, Class, 'Order', Family, Genus
 from 
-  tax_abundance_table
+  taxa_abundance_table
 where
   %s
 "
-      filtered_tax_abundance_table_query = sprintf(
-        filtered_tax_abundance_table_query, 
+      filtered_taxa_abundance_table_query = sprintf(
+        filtered_taxa_abundance_table_query, 
         filtered_sample_ID_string,
         taxa_query
         )
 
       
-      # cat(filtered_tax_abundance_table_query)
+      # cat(filtered_taxa_abundance_table_query)
       
       # print("querying for filterd tax abundance table")
-      filtered_tax_abundance_table=sqldf(filtered_tax_abundance_table_query, row.names=T)
-      # print(str(filtered_tax_abundance_table))
+      filtered_taxa_abundance_table=sqldf(filtered_taxa_abundance_table_query, row.names=T)
+      self$taxa_abundance_table = filtered_taxa_abundance_table
+      # print(str(filtered_taxa_abundance_table))
       
       
       # print(filtered_sampleIDs)
 
       # print("extracting asv table")
-      filtered_ASV_abundance_table = filtered_tax_abundance_table[, filtered_sampleIDs]
+      filtered_ASV_abundance_table = filtered_taxa_abundance_table[, filtered_sampleIDs]
       # print("extracting taxa table")
-      filtered_ASV_taxa_table = filtered_tax_abundance_table[, c('Kingdom', 'Phylum', 'Class', "'Order'", 'Family', 'Genus')]
+      filtered_ASV_taxa_table = filtered_taxa_abundance_table[, c('Kingdom', 'Phylum', 'Class', "'Order'", 'Family', 'Genus')]
       
       # str(filtered_ASV_abundance_table)
       # str(filtered_ASV_taxa_table)
@@ -228,6 +231,11 @@ where
     {
       # print("in getPS")
       return(private$ps_internal)
+    },
+    
+    getTaxaAbundanceTable = function()
+    {
+      return(self$taxa_abundance_table)
     }
 
   )
