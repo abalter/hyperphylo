@@ -16,10 +16,10 @@ PhyseqFilter = R6Class("PhyseqFilter",
 
     createTablesFromPhyloseq = function()
     {
-      # print("create tables from phyloseq")
+      # print("in create tables from phyloseq")
       
-      asv_table = as.data.frame(ps@otu_table)
-      # print("dim asv table")
+      asv_table = as.data.frame(t(ps@otu_table))
+      # # print("dim asv table")
       # print(dim(asv_table))
       taxa_table = as.data.frame(ps@tax_table)
       # print(dim(taxa_table))
@@ -33,11 +33,13 @@ PhyseqFilter = R6Class("PhyseqFilter",
       self$ASV_abundance_table = asv_table
       self$ASV_taxa_table = taxa_table
       self$study_metadata = study_metadata
+      self$sampleIDs = sampleIDs
+      # print(self$sampleIDs)
 
       self$taxa_abundance_table = sqldf(row.names=T, "
 select * 
 from asv_table inner join taxa_table 
-on asv_table.row_names == taxa_table.row_names
+using(row_names)
       ")
       
       # print("done creating tables")
@@ -77,6 +79,7 @@ on asv_table.row_names == taxa_table.row_names
 
   public = list(
     taxa_abundance_table=NULL,
+    sampleIDs=NULL,
     
     initialize = function(
       phyloseq_object=NULL,
@@ -172,34 +175,62 @@ on asv_table.row_names == taxa_table.row_names
       
       filtered_study_metadata = sqldf(filtered_study_metadata_query)
       # print(str(filtered_study_metadata))
+      
+      # print("dim filtered study metadata")
+      # print(dim(filtered_study_metadata))
+      
       # print(filtered_study_metadata$SampleID)
       filtered_sampleIDs = filtered_study_metadata$SampleID
+      self$sampleIDs = filtered_sampleIDs
+      
       filtered_sample_ID_string = paste0(paste(filtered_sampleIDs, collapse=",\n  ") )
       
       ASV_abundance_table = data.frame(self$ASV_abundance_table)
+      
       ASV_tax_table = data.frame(self$ASV_tax_table)
       taxa_abundance_table = data.frame(self$taxa_abundance_table)
       
-      filtered_taxa_abundance_table_query = "
+      if (taxa_query == "")
+      {
+        filtered_taxa_abundance_table_query = "
 select
-  %s,
-  Kingdom, Phylum, Class, 'Order', Family, Genus
+  row_names, %s,
+  Kingdom, Phylum, Class, [Order], Family, Genus
+from 
+  taxa_abundance_table
+"
+        filtered_taxa_abundance_table_query = sprintf(
+          filtered_taxa_abundance_table_query, 
+          filtered_sample_ID_string
+        )
+      }else
+      {
+      
+        filtered_taxa_abundance_table_query = "
+select
+  row_names, %s,
+  Kingdom, Phylum, Class, [Order], Family, Genus
 from 
   taxa_abundance_table
 where
   %s
 "
-      filtered_taxa_abundance_table_query = sprintf(
-        filtered_taxa_abundance_table_query, 
-        filtered_sample_ID_string,
-        taxa_query
+        filtered_taxa_abundance_table_query = sprintf(
+          filtered_taxa_abundance_table_query, 
+          filtered_sample_ID_string,
+          taxa_query
         )
+    }
 
-      
+
+      # print("filtered_taxa_abundance_table_query")
       # cat(filtered_taxa_abundance_table_query)
       
       # print("querying for filterd tax abundance table")
-      filtered_taxa_abundance_table=sqldf(filtered_taxa_abundance_table_query, row.names=T)
+      filtered_taxa_abundance_table=sqldf(
+        filtered_taxa_abundance_table_query, 
+        row.names=T
+        )
       self$taxa_abundance_table = filtered_taxa_abundance_table
       # print(str(filtered_taxa_abundance_table))
       
@@ -209,7 +240,16 @@ where
       # print("extracting asv table")
       filtered_ASV_abundance_table = filtered_taxa_abundance_table[, filtered_sampleIDs]
       # print("extracting taxa table")
-      filtered_ASV_taxa_table = filtered_taxa_abundance_table[, c('Kingdom', 'Phylum', 'Class', "'Order'", 'Family', 'Genus')]
+      filtered_ASV_taxa_table = filtered_taxa_abundance_table[, c('Kingdom', 'Phylum', 'Class', "Order", 'Family', 'Genus')]
+      
+      #print("rownames filtered asv abundance table")
+      #print(rownames(filtered_ASV_abundance_table)[1:3])
+      
+      self$ASV_abundance_table = filtered_ASV_abundance_table
+      self$ASV_taxa_table = filtered_ASV_taxa_table
+      self$study_metadata = filtered_study_metadata
+      self$sampleIDs = filtered_sampleIDs
+
       
       # str(filtered_ASV_abundance_table)
       # str(filtered_ASV_taxa_table)
@@ -233,12 +273,76 @@ where
       return(private$ps_internal)
     },
     
-    getTaxaAbundanceTable = function()
+    getTaxaAbundanceTable = function(normalize=T)
     {
-      return(self$taxa_abundance_table)
+      temp = self$taxa_abundance_table
+
+      if (normalize)
+      {
+        temp[self$sampleIDs] = apply(temp[self$sampleIDs], 2, function(col){col/sum(col)})
+      }
+      return(temp)
     }
 
   )
                 
 )
 
+library(xlsx)
+
+writeTaxGlomTable = function(
+  ps,
+  filename="",
+  sheetname=""
+)
+{
+  asv_table = as.data.frame(ps@otu_table)
+  print("dim asv table")
+  print(dim(asv_table))
+  taxa_table = as.data.frame(ps@tax_table)
+  print(dim(taxa_table))
+  study_metadata = as.data.frame(ps@sam_data)
+  print("dim study metadata")
+  print(dim(study_metadata))
+  sampleIDs = colnames(asv_table)
+  print(sampleIDs)
+  study_metadata$SampleID = unlist(sampleIDs)
+
+  
+  sample_id_string = paste0(paste0("sum(", sampleIDs, ") as ", sampleIDs, collapse=",\n  ") )
+  # sample_id_string = paste0(paste0(sampleIDs,collapse=",\n  ") )
+  
+  SQL = "
+select 
+  Phylum||'_'||Genus as Taxa,
+  %s
+from 
+  asv_table inner join taxa_table 
+on
+  taxa_table.row_names == asv_table.row_names
+group by Taxa
+  "
+      
+  SQL = sprintf(SQL, sample_id_string)
+  
+  cat(SQL)
+  
+  temp = sqldf(row.names=T, SQL)
+  print(str(temp))
+  
+  temp[sampleIDs] = apply(temp[sampleIDs], 2, function(col){col/sum(col)})
+  print(head(temp))
+  
+  print(colSums(temp[sampleIDs]))
+  
+  taxa_abundance_table = temp
+  
+  write.xlsx2(
+    taxa_abundance_table, 
+    file=filename, 
+    sheetName=sheetname,
+    append=T,
+    col.names=T,
+    row.names=T
+  )
+}
