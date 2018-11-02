@@ -137,6 +137,8 @@ using(row_names)
         # print("creating tables from phyloseq")
         private$createTablesFromPhyloseq()
       }
+      
+      print("done initialize")
 
     },
 
@@ -267,6 +269,8 @@ where
       )
       
       return(self)
+      
+      print("done filter")
     },
     
     getPS = function()
