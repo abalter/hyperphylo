@@ -16,7 +16,7 @@ PhyseqFilter = R6Class("PhyseqFilter",
     have_all_table = NULL,
     ps_internal = NULL,
 
-    createTablesFromPhyloseq = function()
+    createTablesFromPhyloseq = function(ps)
     {
       # print("in create tables from phyloseq")
       
@@ -62,7 +62,7 @@ using(row_names)
       # print(dim(asv_taxa_table))
       
       private$ps_internal = phyloseq(
-        otu_table(as.matrix(asv_abundance_table), taxa_are_rows=T),
+        otu_table(t(as.matrix(asv_abundance_table)), taxa_are_rows=F),
         tax_table(as.matrix(asv_taxa_table))
       )
       
@@ -74,7 +74,7 @@ using(row_names)
         private$ps_internal@sam_data = sample_data(study_metadata)
       }
       
-      #print(private$ps_internal)
+      # print(private$ps_internal)
     }
     
   ),
@@ -110,7 +110,7 @@ using(row_names)
         # print("use phyloseq")
         private$use_phyloseq = TRUE
         private$use_tables = FALSE
-        private$has_phylow = TRUE
+        private$has_phylo = TRUE
       }else
       {
         # print("use tables")
@@ -135,10 +135,20 @@ using(row_names)
       {
         # print(ps)
         # print("creating tables from phyloseq")
-        private$createTablesFromPhyloseq()
+        private$createTablesFromPhyloseq(self$phyloseq_object)
+        private$ps_internal = self$phyloseq_object
       }
       
-      print("done initialize")
+      if (private$use_tables)
+      {
+        private$createPhyloseqFromTables(
+          asv_abundance_table=self$ASV_abundance_table,
+          asv_taxa_table=self$ASV_taxa_table,
+          study_metadata=self$study_metadata
+        )
+      }
+      
+      # print("done initialize")
 
     },
 
@@ -224,6 +234,8 @@ where
           filtered_sample_ID_string,
           taxa_query
         )
+        
+        self$ps_internal = self
     }
 
 
@@ -270,7 +282,7 @@ where
       
       return(self)
       
-      print("done filter")
+      # print("done filter")
     },
     
     getPS = function()
@@ -288,6 +300,42 @@ where
         temp[self$sampleIDs] = apply(temp[self$sampleIDs], 2, function(col){col/sum(col)})
       }
       return(temp)
+    },
+    
+    getGlommedTaxaNamesTable = function(glom_query="Phylum||'_'||Genus as Taxa")
+    {
+      
+      taxa_abundance_table = self$getTaxaAbundanceTable(normalize=T)
+      sampleIDs = self$sampleIDs
+      
+      ### Vectorized paste to get:
+      ### s001 --> sum(s001), s002 --> sum(s002), etc.
+      sample_id_string = paste0(paste0("sum(", sampleIDs, ") as ", sampleIDs, collapse=",\n  ") )
+      
+      SQL = "
+select
+  %s,
+  %s
+from
+  taxa_abundance_table
+group by Taxa
+  "
+      
+      SQL = sprintf(SQL, glom_query, sample_id_string)
+      
+      # cat(SQL)
+      
+      temp = sqldf(row.names=T, SQL)
+      # print(str(temp))
+      
+      temp[sampleIDs] = apply(temp[sampleIDs], 2, function(col){col/sum(col)})
+      # print(head(temp))
+      
+      # print(colSums(temp[sampleIDs]))
+      
+      taxa_abundance_table = temp
+      
+      # print("done with filter")
     }
 
   )
@@ -343,12 +391,12 @@ where
 # 
 #   taxa_abundance_table = temp
 # 
-#   write.xlsx2(
-#     taxa_abundance_table,
-#     file=filename,
-#     sheetName=sheetname,
-#     append=T,
-#     col.names=T,
-#     row.names=T
-#   )
+  # write.xlsx2(
+  #   taxa_abundance_table,
+  #   file=filename,
+  #   sheetName=sheetname,
+  #   append=T,
+  #   col.names=T,
+  #   row.names=T
+  # )
 # }

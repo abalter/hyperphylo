@@ -1,49 +1,38 @@
 library(xlsx)
 
 writeTaxGlomTable = function(
-  ps,
+  physeq_filter,
   filename="",
   sheetname=""
 )
 {
-  asv_table = as.data.frame(ps@otu_table)
-  print("dim asv table")
-  print(dim(asv_table))
-  taxa_table = as.data.frame(ps@tax_table)
-  print(dim(taxa_table))
-  study_metadata = as.data.frame(ps@sam_data)
-  print("dim study metadata")
-  print(dim(study_metadata))
-  sampleIDs = colnames(asv_table)
-  print(sampleIDs)
-  study_metadata$SampleID = unlist(sampleIDs)
+  taxa_abundance_table = physeq_filter$taxa_abundance_table
+  sampleIDs = physeq_filter$sampleIDs
   
-  
+  ### Vectorized paste to get:
+  ### s001 --> sum(s001), s002 --> sum(s002), etc.
   sample_id_string = paste0(paste0("sum(", sampleIDs, ") as ", sampleIDs, collapse=",\n  ") )
-  # sample_id_string = paste0(paste0(sampleIDs,collapse=",\n  ") )
-  
+
   SQL = "
 select
   Phylum||'_'||Genus as Taxa,
   %s
 from
-  asv_table inner join taxa_table
-on
-  taxa_table.row_names == asv_table.row_names
+  taxa_abundance_table
 group by Taxa
   "
   
   SQL = sprintf(SQL, sample_id_string)
   
-  cat(SQL)
+  # cat(SQL)
   
   temp = sqldf(row.names=T, SQL)
-  print(str(temp))
+  # print(str(temp))
   
   temp[sampleIDs] = apply(temp[sampleIDs], 2, function(col){col/sum(col)})
-  print(head(temp))
+  # print(head(temp))
   
-  print(colSums(temp[sampleIDs]))
+  # print(colSums(temp[sampleIDs]))
   
   taxa_abundance_table = temp
   
