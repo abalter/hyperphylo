@@ -4,7 +4,7 @@ library(phyloseq)
 
 #.libPaths(new=c('/home/balter/conda/lib/R/library', '/home/balter/R'))
 
-print("in physeqfilter")
+# print("in physeqfilter")
 
 PhyseqFilter = R6Class("PhyseqFilter",
   portable = FALSE,
@@ -154,8 +154,9 @@ using(row_names)
 
     filter = function(
       taxa_query = "", ### Phylum in (Bacteroidetes,Fermicutes) and Genus in (Prevotella_9,Bacteroides,Sellimonas,Anaerostipes,Barnesiella)
-      variable_value_query="" ### e.g.: CaseString = AMD and Age_Rounded > 70 and Gender = M
+      variable_value_query="", ### e.g.: CaseString = AMD and Age_Rounded > 70 and Gender = M
       # additional_columns = "" ### not implemented yet, but to include taxa columns in results
+      sample_query = "" 
     )
     {
       # print("filter function")
@@ -175,6 +176,19 @@ using(row_names)
       
       study_metadata = data.frame(self$study_metadata)
       # print(str(study_metadata))
+      
+      
+      if(sample_query != "")
+      {
+        sampleIDs = c(sampleID=study_metadata$sampleID)
+        filtered_samples_query = sprintf("select * from sampleIDs where ", sample_query)
+        filtered_sampleIDs = sqldf(filtered_samples_query)
+        filtered_study_metadata = study_metadata[filtered_sampleIDs,]
+        self$sampleIDs = filtered_sampleIDs
+        self$ASV_abundance_table = self$ASV_abundance_table[,filtered_sampleIDs]
+        self$ASV_tax_table = self$ASV_tax_table[,c("Taxa", filtered_sampleIDs)]
+      }
+      
       
       if ( variable_value_query == "")
       {
@@ -200,7 +214,6 @@ using(row_names)
       filtered_sample_ID_string = paste0(paste(filtered_sampleIDs, collapse=",\n  ") )
       
       ASV_abundance_table = data.frame(self$ASV_abundance_table)
-      
       ASV_tax_table = data.frame(self$ASV_tax_table)
       taxa_abundance_table = data.frame(self$taxa_abundance_table)
       
@@ -236,7 +249,7 @@ where
         )
         
         self$ps_internal = self
-    }
+      }
 
 
       # print("filtered_taxa_abundance_table_query")
@@ -290,6 +303,18 @@ where
       # print("in getPS")
       return(private$ps_internal)
     },
+    
+    getTables = function()
+    {
+      physeq_filter_tables = c(
+        ASV_abundance_table=self$ASV_abundance_table,
+        ASV_taxa_table=self$ASV_taxa_table,
+        study_metadata=self$study_metadata,
+        sampleIDs=self$sampleIDs
+      )
+      
+      return(physeq_filter_tables)
+    }
     
     getTaxaAbundanceTable = function(normalize=T)
     {

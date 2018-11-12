@@ -3,7 +3,8 @@ library(xlsx)
 writeTaxGlomTable = function(
   physeq_filter,
   filename="",
-  sheetname=""
+  sheetname="Sheet1",
+  save_file=T
 )
 {
   taxa_abundance_table = physeq_filter$taxa_abundance_table
@@ -24,24 +25,41 @@ group by Taxa
   
   SQL = sprintf(SQL, sample_id_string)
   
-  # cat(SQL)
+  cat(SQL)
   
   temp = sqldf(row.names=T, SQL)
-  # print(str(temp))
-  
+
+  print("normalizing")
   temp[sampleIDs] = apply(temp[sampleIDs], 2, function(col){col/sum(col)})
+  print("fixing na")
+  temp[,"Taxa"][!is.na(temp[,'Taxa'])] = 'NA'
+  # print("assigining rownames")
+  # rownames(temp) = temp[,"Taxa"]
+  # print("removing taxa column")
+  # temp["Taxa"] = NULL
+  
   # print(head(temp))
   
   # print(colSums(temp[sampleIDs]))
   
+  print("assigning taxa_abundance_table")
   taxa_abundance_table = temp
+  print(rownames(taxa_abundance_table))
+  print(taxa_abundance_table['Taxa'])
   
-  write.xlsx2(
-    taxa_abundance_table,
-    file=filename,
-    sheetName=sheetname,
-    append=T,
-    col.names=T,
-    row.names=T
-  )
+  gc()
+  gc()
+  if (save_file)
+  {
+    write.xlsx2(
+      taxa_abundance_table,
+      file=filename,
+      sheetName=sheetname,
+      append=T,
+      col.names=T,
+      row.names=T
+    )
+  }
+  
+  return(taxa_abundance_table)
 }
