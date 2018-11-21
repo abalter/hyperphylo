@@ -20,18 +20,21 @@ taxonomy_table
 
 study_metadata = data.frame(
   SampleID=sample_names,
-  var1=sample(sample(letters, N_samples, replace = TRUE)),
+  var1=factor(sample(c('Y','N'), N_samples, replace = TRUE)),
   var2=sample(1:100, N_samples, replace = TRUE)
   )
 # study_metadata = as.matrix(study_metadata)
 study_metadata
 
 ps = phyloseq(
-  otu_table(asv_table, taxa_are_rows=T),
+  otu_table(asv_table, taxa_are_rows=F),
   tax_table(taxonomy_table)
 )
 ps@sam_data = sample_data(study_metadata)
 ps
+
+ps_ord = ordinate(ps, 'MDS', 'bray')
+plot_ordination(ps, ps_ord, color='var1')
 
 # ps2 = phyloseq(
 #   otu_table(asv_table, taxa_are_rows=T),
