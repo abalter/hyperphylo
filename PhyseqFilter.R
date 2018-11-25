@@ -71,7 +71,8 @@ using(row_names)
     createPhyloseqFromTables = function(
       asv_abundance_table=NULL,
       asv_taxa_table=NULL,
-      study_metadata=NULL
+      study_metadata=NULL,
+      sample_name_column="",
     )
     {
       d_bug("in create phyloseq from tables", 1)
@@ -81,18 +82,20 @@ using(row_names)
       d_bug(dim(asv_abundance_table), 2)
       d_bug(dim(asv_taxa_table), 2)
       
+      if (sample_name_column != "")
+      {
+        row.names(study_metadata) = study_metadata[, sample_name_column]
+      }else
+      {
+        row.names(study_metadata) = colnames(asv_abundance_table)
+      }
+      
       private$ps_internal = phyloseq(
         otu_table(t(as.matrix(asv_abundance_table)), taxa_are_rows=F),
-        tax_table(as.matrix(asv_taxa_table))
+        tax_table(as.matrix(asv_taxa_table)),
+        sample_data(study_metadata)
       )
       
-      # private$ps_internal@sam_data = study_metadata
-      
-      if (!is.null(study_metadata))
-      {
-        d_bug("no metadata", 2)
-        private$ps_internal@sam_data = sample_data(study_metadata)
-      }
       
       d_bug(private$ps_internal, 2)
     }
@@ -107,7 +110,8 @@ using(row_names)
       phyloseq_object=NULL,
       sequence_taxa_table=NULL, # Rows are sequences. Cols are taxa ranks. Values are taxa names.
       study_metadata=NULL, # Rows are samples. Cols are variables. Values are data.
-      sequence_abundance_table=NULL # Rows are sequences of interest (e.g. ASV). Cols are sample IDS. Values are counts.
+      sequence_abundance_table=NULL, # Rows are sequences of interest (e.g. ASV). Cols are sample IDS. Values are counts.
+      sample_name_column=""
     )
     {
       d_bug("initialize", 1)
@@ -116,6 +120,7 @@ using(row_names)
       self$ASV_taxa_table = sequence_taxa_table
       self$ASV_abundance_table = sequence_abundance_table
       self$sample_metadata = study_metadata
+      self$sample_name_column = sample_name_column
   
       all_tables = list(
         asv_table=self$ASV_abundance_table,
