@@ -72,7 +72,7 @@ using(row_names)
       asv_abundance_table=NULL,
       asv_taxa_table=NULL,
       study_metadata=NULL,
-      sample_name_column="",
+      sample_name_column=""
     )
     {
       d_bug("in create phyloseq from tables", 1)
@@ -95,7 +95,6 @@ using(row_names)
         tax_table(as.matrix(asv_taxa_table)),
         sample_data(study_metadata)
       )
-      
       
       d_bug(private$ps_internal, 2)
     }

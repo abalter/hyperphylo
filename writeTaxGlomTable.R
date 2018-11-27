@@ -1,4 +1,4 @@
-library(xlsx)
+library(openxlsx)
 
 writeTaxGlomTable = function(
   physeq_filter,
@@ -51,7 +51,7 @@ group by Taxa
   gc()
   if (save_file)
   {
-    write.xlsx2(
+    write.xlsx(
       taxa_abundance_table,
       file=filename,
       sheetName=sheetname,
