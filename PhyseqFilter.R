@@ -1,4 +1,4 @@
-d_bug_level = 0
+d_bug_level = 2
 
 library(R6)
 library(sqldf)
@@ -12,9 +12,9 @@ d_bug = function(text, level=1)
 {
   if (level <= d_bug_level)
   {
-    d_bug(d_bug_level)
-    d_bug(level < d_bug_level)
-    d_bug(text)
+    # print(d_bug_level)
+    # print(level < d_bug_level)
+    print(text)
   }
 }
 
